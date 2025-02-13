@@ -12,6 +12,7 @@
   </style>
 </head>
 <body>
+
 <h1>Quantum Gate Bird 2.0</h1>
 <canvas id="gameCanvas" width="600" height="600"></canvas>
 <div id="controls">
@@ -26,43 +27,195 @@
   <button onclick="measure()">Measure</button>
   <button onclick="startGame()">Start/Reset</button>
 </div>
+
 <script>
-let c=document.getElementById("gameCanvas"),ctx=c.getContext("2d");let state=[ [1,0],[0,0],[0,0],[0,0] ];let gates={};let pipes=[];let score=0;let gameActive=false;let spawnTimer=0;let spawnInterval=100;let pipeSpeed=2;const X2=[[[0,0],[1,0]],[[1,0],[0,0]]],Z2=[[[1,0],[0,0]],[[0,0],[-1,0]]],H2=[[[0.707,0],[0.707,0]],[[0.707,0],[-0.707,0]]],I2=[[[1,0],[0,0]],[[0,0],[1,0]]],CNOT12=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]]],CNOT21=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]]];function t4(a,b){let r=new Array(4).fill(null).map(()=>new Array(4).fill([0,0]));for(let R1=0;R1<2;R1++){for(let C1=0;C1<2;C1++){for(let R2=0;R2<2;R2++){for(let C2=0;C2<2;C2++){let m=cm(a[R1][C1],b[R2][C2]);let rr=2*R1+R2;let cc=2*C1+C2;r[rr][cc]=ca(r[rr][cc],m);}}}}return r}function initGates(){gates.X1=t4(X2,I2);gates.X2=t4(I2,X2);gates.Z1=t4(Z2,I2);gates.Z2=t4(I2,Z2);gates.H1=t4(H2,I2);gates.H2=t4(I2,H2);gates.CNOT12=CNOT12;gates.CNOT21=CNOT21}initGates();function applyGate(g){let mat=gates[g];state=mvm(mat,state);norm();}function measure(){let p=[ ms(state[0]),ms(state[1]),ms(state[2]),ms(state[3]) ];let r=Math.random(),cumulative=0,idx=0;for(let i=0;i<4;i++){cumulative+=p[i];if(r<cumulative){idx=i;break}}let v=[[0,0],[0,0],[0,0],[0,0]];v[idx]=[1,0];state=v}function startGame(){state=[[1,0],[0,0],[0,0],[0,0]];norm();pipes=[];score=0;gameActive=true;spawnTimer=0;pipeSpeed=2;animate()}function animate(){if(!gameActive)return;spawnTimer++;if(spawnTimer>spawnInterval){spawnTimer=0;spawnPipe()}for(let p of pipes){p.x-=pipeSpeed}pipes=pipes.filter(a=>a.x+60>0);for(let p of pipes){if(!p.scored&&p.x+60<getBirdX()-10){p.scored=true;score++;if(score%5==0)pipeSpeed+=0.5}}checkCollision()}draw();requestAnimationFrame(animate)}function spawnPipe(){let th=Math.floor(Math.random()*(c.height-150-40))+20;pipes.push({x:c.width,topH:th,gap:150,scored:false})}function checkCollision(){let bx=getBirdX(),by=getBirdY();for(let p of pipes){if(bx+10>p.x&&bx-10<p.x+60){if(by-10<p.topH||by+10>p.topH+p.gap){endGame();}}}}function endGame(){gameActive=false;ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#fff";ctx.font="30px Arial";ctx.fillText("Game Over",c.width/2-70,c.height/2-20);ctx.fillText("Score: "+score,c.width/2-50,c.height/2+20)}function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="green";for(let p of pipes){ctx.fillRect(p.x,0,60,p.topH);ctx.fillRect(p.x,p.topH+150,60,c.height-(p.topH+150))}ctx.fillStyle="yellow";ctx.beginPath();ctx.arc(getBirdX(),getBirdY(),10,0,2*Math.PI);ctx.fill();ctx.fillStyle="white";ctx.font="20px Arial";ctx.fillText("Score: "+score,10,25)}function getBirdX(){let p=ms(state[2])+ms(state[3]);return p*(c.width-40)+20}function getBirdY(){let p=ms(state[1])+ms(state[3]);return p*(c.height-40)+20}function norm(){let s=0;for(let i=0;i<4;i++)s+=ms(state[i]);s=Math.sqrt(s);if(s<1e-12){state=[[1,0],[0,0],[0,0],[0,0]];return}for(let i=0;i<4;i++){state[i][0]/=s;state[i][1]/=s}}function mvm(m,v){let o=[[0,0],[0,0],[0,0],[0,0]];for(let i=0;i<4;i++){let sum=[0,0];for(let j=0;j<4;j++){sum=ca(sum,cm(m[i][j],v[j]))}o[i]=sum}return o}function cm(a,b){let re=a[0]*b[0]-a[1]*b[1];let im=a[0]*b[1]+a[1]*b[0];return[re,im]}function ca(a,b){return[a[0]+b[0],a[1]+b[1]]}function ms(a){return a[0]*a[0]+a[1]*a[1]}
+let cv = document.getElementById("gameCanvas"), cx = cv.getContext("2d");
+let state = [ [1,0],[0,0],[0,0],[0,0] ];
+let pipes = [];
+let score = 0;
+let gameActive = false;
+let spawnTimer = 0;
+let spawnInterval = 100;
+let pipeSpeed = 2;
+let gates = {};
+
+const X_2 = [ [[0,0],[1,0]], [[1,0],[0,0]] ];
+const Z_2 = [ [[1,0],[0,0]], [[0,0],[-1,0]] ];
+const H_2 = [ [[0.707,0],[0.707,0]], [[0.707,0],[-0.707,0]] ];
+const I_2 = [ [[1,0],[0,0]], [[0,0],[1,0]] ];
+const CNOT_12 = [
+  [[1,0],[0,0],[0,0],[0,0]],
+  [[0,0],[1,0],[0,0],[0,0]],
+  [[0,0],[0,0],[0,0],[1,0]],
+  [[0,0],[0,0],[1,0],[0,0]]
+];
+const CNOT_21 = [
+  [[1,0],[0,0],[0,0],[0,0]],
+  [[0,0],[0,0],[0,0],[1,0]],
+  [[0,0],[0,0],[1,0],[0,0]],
+  [[0,0],[1,0],[0,0],[0,0]]
+];
+
+function initGates() {
+  gates.X1 = tensor4(X_2, I_2);
+  gates.X2 = tensor4(I_2, X_2);
+  gates.Z1 = tensor4(Z_2, I_2);
+  gates.Z2 = tensor4(I_2, Z_2);
+  gates.H1 = tensor4(H_2, I_2);
+  gates.H2 = tensor4(I_2, H_2);
+  gates.CNOT12 = CNOT_12;
+  gates.CNOT21 = CNOT_21;
+}
+initGates();
+
+function startGame() {
+  state = [ [1,0],[0,0],[0,0],[0,0] ];
+  normalizeState();
+  pipes = [];
+  score = 0;
+  gameActive = true;
+  spawnTimer = 0;
+  pipeSpeed = 2;
+  animate();
+}
+
+function animate() {
+  if (!gameActive) return;
+  spawnTimer++;
+  if (spawnTimer > spawnInterval) {
+    spawnTimer = 0;
+    spawnPipe();
+  }
+  for (let p of pipes) p.x -= pipeSpeed;
+  pipes = pipes.filter(p => p.x + 60 > 0);
+  for (let p of pipes) {
+    if (!p.scored && p.x + 60 < getBirdX() - 10) {
+      p.scored = true;
+      score++;
+      if (score % 5 === 0) pipeSpeed += 0.5;
+    }
+  }
+  checkCollision();
+  draw();
+  requestAnimationFrame(animate);
+}
+
+function spawnPipe() {
+  let th = Math.floor(Math.random() * (cv.height - 150 - 40)) + 20;
+  pipes.push({ x: cv.width, topH: th, gap: 150, scored: false });
+}
+
+function checkCollision() {
+  let bx = getBirdX(), by = getBirdY();
+  for (let p of pipes) {
+    if (bx + 10 > p.x && bx - 10 < p.x + 60) {
+      if (by - 10 < p.topH || by + 10 > p.topH + p.gap) {
+        endGame();
+      }
+    }
+  }
+}
+
+function endGame() {
+  gameActive = false;
+  cx.fillStyle = "rgba(0,0,0,0.5)";
+  cx.fillRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = "#fff";
+  cx.font = "30px Arial";
+  cx.fillText("Game Over", cv.width/2 - 70, cv.height/2 - 20);
+  cx.fillText("Score: " + score, cv.width/2 - 50, cv.height/2 + 20);
+}
+
+function draw() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = "green";
+  for (let p of pipes) {
+    cx.fillRect(p.x, 0, 60, p.topH);
+    cx.fillRect(p.x, p.topH + 150, 60, cv.height - (p.topH + 150));
+  }
+  cx.fillStyle = "yellow";
+  cx.beginPath();
+  cx.arc(getBirdX(), getBirdY(), 10, 0, 2 * Math.PI);
+  cx.fill();
+  cx.fillStyle = "white";
+  cx.font = "20px Arial";
+  cx.fillText("Score: " + score, 10, 25);
+}
+
+function getBirdX() {
+  let p = magSq(state[2]) + magSq(state[3]);
+  return p * (cv.width - 40) + 20;
+}
+
+function getBirdY() {
+  let p = magSq(state[1]) + magSq(state[3]);
+  return p * (cv.height - 40) + 20;
+}
+
+function applyGate(name) {
+  let mat = gates[name];
+  state = matVecMultiply(mat, state);
+  normalizeState();
+}
+
+function measure() {
+  let probs = state.map(a => magSq(a));
+  let r = Math.random(), c = 0, idx = 0;
+  for (let i = 0; i < 4; i++) {
+    c += probs[i];
+    if (r < c) { idx = i; break; }
+  }
+  let collapsed = [ [0,0],[0,0],[0,0],[0,0] ];
+  collapsed[idx] = [1,0];
+  state = collapsed;
+}
+
+function tensor4(A, B) {
+  let res = new Array(4).fill(null).map(() => new Array(4).fill([0,0]));
+  for (let rA=0; rA<2; rA++){
+    for (let cA=0; cA<2; cA++){
+      for (let rB=0; rB<2; rB++){
+        for (let cB=0; cB<2; cB++){
+          let prod = cm(A[rA][cA], B[rB][cB]);
+          res[2*rA+rB][2*cA+cB] = ca(res[2*rA+rB][2*cA+cB], prod);
+        }
+      }
+    }
+  }
+  return res;
+}
+
+function matVecMultiply(mat, vec) {
+  let out = [ [0,0],[0,0],[0,0],[0,0] ];
+  for (let i=0; i<4; i++){
+    let sum = [0,0];
+    for (let j=0; j<4; j++){
+      sum = ca(sum, cm(mat[i][j], vec[j]));
+    }
+    out[i] = sum;
+  }
+  return out;
+}
+
+function normalizeState() {
+  let s=0;
+  for (let i=0;i<4;i++) s += magSq(state[i]);
+  s = Math.sqrt(s);
+  if (s<1e-12) { state=[ [1,0],[0,0],[0,0],[0,0] ]; return; }
+  for (let i=0;i<4;i++){ state[i][0]/=s; state[i][1]/=s; }
+}
+
+function cm(a, b) {
+  return [a[0]*b[0] - a[1]*b[1], a[0]*b[1] + a[1]*b[0]];
+}
+
+function ca(a, b) {
+  return [a[0]+b[0], a[1]+b[1]];
+}
+
+function magSq(a) {
+  return a[0]*a[0] + a[1]*a[1];
+}
 </script>
 </body>
 </html>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Quantum Gate Bird 2.0</title>
-  <style>
-    body { margin: 0; padding: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center; }
-    h1 { margin: 20px 0; }
-    #gameCanvas { display: block; margin: 20px auto; border: 2px solid #444; background: #222; }
-    #controls button { background: #6600cc; color: #fff; border: none; padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; }
-    #controls button:hover { background: #9933ff; }
-  </style>
-</head>
-<body>
-<h1>Quantum Gate Bird 2.0</h1>
-<canvas id="gameCanvas" width="600" height="600"></canvas>
-<div id="controls">
-  <button onclick="applyGate('X1')">X1</button>
-  <button onclick="applyGate('X2')">X2</button>
-  <button onclick="applyGate('Z1')">Z1</button>
-  <button onclick="applyGate('Z2')">Z2</button>
-  <button onclick="applyGate('H1')">H1</button>
-  <button onclick="applyGate('H2')">H2</button>
-  <button onclick="applyGate('CNOT12')">CNOT(1→2)</button>
-  <button onclick="applyGate('CNOT21')">CNOT(2→1)</button>
-  <button onclick="measure()">Measure</button>
-  <button onclick="startGame()">Start/Reset</button>
-</div>
-<script>
-let c=document.getElementById("gameCanvas"),ctx=c.getContext("2d");let state=[ [1,0],[0,0],[0,0],[0,0] ];let gates={};let pipes=[];let score=0;let gameActive=false;let spawnTimer=0;let spawnInterval=100;let pipeSpeed=2;const X2=[[[0,0],[1,0]],[[1,0],[0,0]]],Z2=[[[1,0],[0,0]],[[0,0],[-1,0]]],H2=[[[0.707,0],[0.707,0]],[[0.707,0],[-0.707,0]]],I2=[[[1,0],[0,0]],[[0,0],[1,0]]],CNOT12=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]]],CNOT21=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]]];function t4(a,b){let r=new Array(4).fill(null).map(()=>new Array(4).fill([0,0]));for(let R1=0;R1<2;R1++){for(let C1=0;C1<2;C1++){for(let R2=0;R2<2;R2++){for(let C2=0;C2<2;C2++){let m=cm(a[R1][C1],b[R2][C2]);let rr=2*R1+R2;let cc=2*C1+C2;r[rr][cc]=ca(r[rr][cc],m);}}}}return r}function initGates(){gates.X1=t4(X2,I2);gates.X2=t4(I2,X2);gates.Z1=t4(Z2,I2);gates.Z2=t4(I2,Z2);gates.H1=t4(H2,I2);gates.H2=t4(I2,H2);gates.CNOT12=CNOT12;gates.CNOT21=CNOT21}initGates();function applyGate(g){let mat=gates[g];state=mvm(mat,state);norm();}function measure(){let p=[ ms(state[0]),ms(state[1]),ms(state[2]),ms(state[3]) ];let r=Math.random(),cumulative=0,idx=0;for(let i=0;i<4;i++){cumulative+=p[i];if(r<cumulative){idx=i;break}}let v=[[0,0],[0,0],[0,0],[0,0]];v[idx]=[1,0];state=v}function startGame(){state=[[1,0],[0,0],[0,0],[0,0]];norm();pipes=[];score=0;gameActive=true;spawnTimer=0;pipeSpeed=2;animate()}function animate(){if(!gameActive)return;spawnTimer++;if(spawnTimer>spawnInterval){spawnTimer=0;spawnPipe()}for(let p of pipes){p.x-=pipeSpeed}pipes=pipes.filter(a=>a.x+60>0);for(let p of pipes){if(!p.scored&&p.x+60<getBirdX()-10){p.scored=true;score++;if(score%5==0)pipeSpeed+=0.5}}checkCollision()}draw();requestAnimationFrame(animate)}function spawnPipe(){let th=Math.floor(Math.random()*(c.height-150-40))+20;pipes.push({x:c.width,topH:th,gap:150,scored:false})}function checkCollision(){let bx=getBirdX(),by=getBirdY();for(let p of pipes){if(bx+10>p.x&&bx-10<p.x+60){if(by-10<p.topH||by+10>p.topH+p.gap){endGame();}}}}function endGame(){gameActive=false;ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#fff";ctx.font="30px Arial";ctx.fillText("Game Over",c.width/2-70,c.height/2-20);ctx.fillText("Score: "+score,c.width/2-50,c.height/2+20)}function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="green";for(let p of pipes){ctx.fillRect(p.x,0,60,p.topH);ctx.fillRect(p.x,p.topH+150,60,c.height-(p.topH+150))}ctx.fillStyle="yellow";ctx.beginPath();ctx.arc(getBirdX(),getBirdY(),10,0,2*Math.PI);ctx.fill();ctx.fillStyle="white";ctx.font="20px Arial";ctx.fillText("Score: "+score,10,25)}function getBirdX(){let p=ms(state[2])+ms(state[3]);return p*(c.width-40)+20}function getBirdY(){let p=ms(state[1])+ms(state[3]);return p*(c.height-40)+20}function norm(){let s=0;for(let i=0;i<4;i++)s+=ms(state[i]);s=Math.sqrt(s);if(s<1e-12){state=[[1,0],[0,0],[0,0],[0,0]];return}for(let i=0;i<4;i++){state[i][0]/=s;state[i][1]/=s}}function mvm(m,v){let o=[[0,0],[0,0],[0,0],[0,0]];for(let i=0;i<4;i++){let sum=[0,0];for(let j=0;j<4;j++){sum=ca(sum,cm(m[i][j],v[j]))}o[i]=sum}return o}function cm(a,b){let re=a[0]*b[0]-a[1]*b[1];let im=a[0]*b[1]+a[1]*b[0];return[re,im]}function ca(a,b){return[a[0]+b[0],a[1]+b[1]]}function ms(a){return a[0]*a[0]+a[1]*a[1]}
-</script>
-</body>
-</html>
-
