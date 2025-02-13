@@ -2,327 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Quantum Flappy Bird: Infinity</title>
+  <title>Quantum Gate Bird</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: black;
-      color: white;
-      font-family: sans-serif;
-      text-align: center;
-    }
-    h1 {
-      margin: 20px 0;
-    }
-    #gameContainer {
-      margin: 0 auto;
-      width: 400px; /* fixed for simplicity; can be made responsive */
-      position: relative;
-    }
-    #gameCanvas {
-      display: block;
-      margin: 0 auto;
-      border: 2px solid #555;
-      background-color: #222; /* fallback */
-    }
-    #controls {
-      margin: 10px auto;
-    }
-    button {
-      background-color: #6600cc;
-      color: #fff;
-      border: none;
-      padding: 10px 15px;
-      font-size: 16px;
-      margin: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #9933ff;
-    }
-    #scoreDisplay {
-      margin: 10px 0;
-      font-size: 18px;
-      font-weight: bold;
-    }
+    body { margin: 0; padding: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+    h1 { margin: 20px 0; }
+    #gameCanvas { display: block; margin: 20px auto; border: 2px solid #444; background: #222; }
+    #controls button { background: #6600cc; color: #fff; border: none; padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; }
+    #controls button:hover { background: #9933ff; }
   </style>
 </head>
 <body>
-
-<h1>Quantum Flappy Bird: Infinity</h1>
-<div id="gameContainer">
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
-</div>
-
+<h1>Quantum Gate Bird 2.0</h1>
+<canvas id="gameCanvas" width="600" height="600"></canvas>
 <div id="controls">
-  <button id="startBtn">Start Game</button>
-  <button id="flapBtn">Flap</button>
-  <button id="quantumBtn">Quantum Power</button>
-  <p id="scoreDisplay">Score: 0</p>
+  <button onclick="applyGate('X1')">X1</button>
+  <button onclick="applyGate('X2')">X2</button>
+  <button onclick="applyGate('Z1')">Z1</button>
+  <button onclick="applyGate('Z2')">Z2</button>
+  <button onclick="applyGate('H1')">H1</button>
+  <button onclick="applyGate('H2')">H2</button>
+  <button onclick="applyGate('CNOT12')">CNOT(1→2)</button>
+  <button onclick="applyGate('CNOT21')">CNOT(2→1)</button>
+  <button onclick="measure()">Measure</button>
+  <button onclick="startGame()">Start/Reset</button>
 </div>
-
 <script>
-/****************************************************************
- * Quantum Flappy Bird: Infinity
- * 
- * DYNAMIC FEATURES:
- * 1) Day-Night Cycle: background color continuously changes.
- * 2) Random Pipe Colors: each pipe has a random hue.
- * 3) Difficulty Scaling: pipe speed & spawn rate increase 
- *    as score rises.
- * 4) Quantum Tunnel Mechanic: press "Quantum Power" to attempt
- *    a 50% chance to ignore collision that frame.
- * 5) Mobile-Friendly: tap the canvas or "Flap" button to jump.
- ****************************************************************/
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const startBtn = document.getElementById("startBtn");
-const flapBtn = document.getElementById("flapBtn");
-const quantumBtn = document.getElementById("quantumBtn");
-const scoreDisplay = document.getElementById("scoreDisplay");
-
-const WIDTH = canvas.width;
-const HEIGHT = canvas.height;
-
-// Bird properties
-let birdX = 80;
-let birdY = HEIGHT / 2;
-let birdRadius = 15;
-let birdVelocity = 0;
-const GRAVITY = 0.35;
-const FLAP_STRENGTH = -6;
-
-// Quantum mechanic
-const QUANTUM_TUNNEL_PROB = 0.5; // 50% chance to ignore collision
-let quantumAttempt = false;       // set true if player tries to tunnel this frame
-
-// Pipes
-let pipes = [];
-const BASE_PIPE_WIDTH = 60;
-const BASE_PIPE_GAP = 150;
-const BASE_PIPE_SPEED = 2.5;
-let pipeSpawnTimer = 0;
-const BASE_PIPE_SPAWN_INTERVAL = 100;
-
-// Dynamic difficulty
-function getPipeSpeed(score) {
-  // Increase speed with score
-  return BASE_PIPE_SPEED + Math.floor(score / 5) * 0.5;
-}
-function getPipeSpawnInterval(score) {
-  // Decrease interval (spawn pipes more often) as score grows
-  return Math.max(50, BASE_PIPE_SPAWN_INTERVAL - score * 2);
-}
-
-// Game state
-let gameActive = false;
-let score = 0;
-
-// For day-night cycle
-let frameCount = 0; // increments each animation frame
-
-// EVENT LISTENERS
-document.addEventListener("keydown", (e) => {
-  if (e.code === "Space") {
-    flap();
-  }
-});
-canvas.addEventListener("click", flap);
-canvas.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  flap();
-}, {passive: false});
-
-startBtn.addEventListener("click", startGame);
-flapBtn.addEventListener("click", flap);
-quantumBtn.addEventListener("click", () => {
-  quantumAttempt = true;
-});
-
-// START GAME
-function startGame() {
-  resetGame();
-  gameActive = true;
-  animate();
-}
-
-// RESET
-function resetGame() {
-  birdX = 80;
-  birdY = HEIGHT / 2;
-  birdVelocity = 0;
-  score = 0;
-  pipes = [];
-  pipeSpawnTimer = 0;
-  frameCount = 0;
-  quantumAttempt = false;
-  scoreDisplay.innerText = "Score: 0";
-}
-
-// MAIN LOOP
-function animate() {
-  if (!gameActive) return;
-
-  frameCount++;
-  updateBird();
-  updatePipes();
-  checkCollisions();
-
-  drawScene(); // includes background, pipes, bird, score
-
-  // Reset quantum attempt each frame
-  quantumAttempt = false;
-
-  requestAnimationFrame(animate);
-}
-
-// UPDATE BIRD
-function updateBird() {
-  birdVelocity += GRAVITY;
-  birdY += birdVelocity;
-
-  // top clamp
-  if (birdY < birdRadius) {
-    birdY = birdRadius;
-    birdVelocity = 0;
-  }
-  // bottom clamp
-  if (birdY > HEIGHT - birdRadius) {
-    birdY = HEIGHT - birdRadius;
-    birdVelocity = 0;
-  }
-}
-
-// UPDATE PIPES
-function updatePipes() {
-  pipeSpawnTimer++;
-  let currentSpeed = getPipeSpeed(score);
-  let currentSpawnInterval = getPipeSpawnInterval(score);
-
-  if (pipeSpawnTimer > currentSpawnInterval) {
-    pipeSpawnTimer = 0;
-    spawnPipe();
-  }
-
-  // Move pipes left
-  for (let p of pipes) {
-    p.x -= currentSpeed;
-  }
-  // Remove off-screen pipes
-  pipes = pipes.filter(p => p.x + p.width > 0);
-
-  // Score increment
-  for (let p of pipes) {
-    if (!p.passed && p.x + p.width < birdX) {
-      p.passed = true;
-      score++;
-      scoreDisplay.innerText = "Score: " + score;
-    }
-  }
-}
-
-function spawnPipe() {
-  let topHeight = Math.floor(Math.random() * (HEIGHT - BASE_PIPE_GAP - 50)) + 20;
-  let gap = BASE_PIPE_GAP;
-  let bottomY = topHeight + gap;
-  let bottomHeight = HEIGHT - bottomY;
-
-  // random color
-  let hue = Math.floor(Math.random() * 360);
-
-  pipes.push({
-    x: WIDTH,
-    width: BASE_PIPE_WIDTH,
-    topY: 0,
-    topHeight: topHeight,
-    bottomY: bottomY,
-    bottomHeight: bottomHeight,
-    passed: false,
-    hue: hue
-  });
-}
-
-// COLLISIONS
-function checkCollisions() {
-  for (let p of pipes) {
-    // horizontal overlap
-    if (birdX + birdRadius > p.x && birdX - birdRadius < p.x + p.width) {
-      // top pipe collision
-      if (birdY - birdRadius < p.topHeight) {
-        handleCollision();
-      }
-      // bottom pipe collision
-      if (birdY + birdRadius > p.bottomY) {
-        handleCollision();
-      }
-    }
-  }
-}
-
-function handleCollision() {
-  if (quantumAttempt) {
-    // 50% chance to ignore collision
-    let r = Math.random();
-    if (r > QUANTUM_TUNNEL_PROB) {
-      endGame();
-    }
-  } else {
-    endGame();
-  }
-}
-
-function endGame() {
-  gameActive = false;
-  // Draw game over overlay
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-  ctx.fillStyle = "#fff";
-  ctx.font = "30px Arial";
-  ctx.fillText("Game Over", WIDTH/2 - 70, HEIGHT/2 - 20);
-  ctx.fillText("Score: " + score, WIDTH/2 - 50, HEIGHT/2 + 20);
-}
-
-// DRAW
-function drawScene() {
-  // Day-night cycle: background changes with frameCount
-  // We'll do a hue that oscillates with time, or just shift a gradient
-  let cycleHue = (frameCount / 2) % 360; 
-  // create a gradient from top to bottom
-  let gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-  gradient.addColorStop(0, `hsl(${cycleHue}, 50%, 30%)`);
-  gradient.addColorStop(1, `hsl(${(cycleHue + 180) % 360}, 50%, 10%)`);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-  // draw pipes
-  for (let p of pipes) {
-    // top pipe
-    ctx.fillStyle = `hsl(${p.hue}, 70%, 40%)`;
-    ctx.fillRect(p.x, p.topY, p.width, p.topHeight);
-    // bottom pipe
-    ctx.fillRect(p.x, p.bottomY, p.width, p.bottomHeight);
-  }
-
-  // draw bird
-  ctx.fillStyle = "yellow";
-  ctx.beginPath();
-  ctx.arc(birdX, birdY, birdRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // draw on-canvas score
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 30);
-}
-
-// FLAP
-function flap() {
-  if (!gameActive) return;
-  birdVelocity = FLAP_STRENGTH;
-}
+let c=document.getElementById("gameCanvas"),ctx=c.getContext("2d");let state=[ [1,0],[0,0],[0,0],[0,0] ];let gates={};let pipes=[];let score=0;let gameActive=false;let spawnTimer=0;let spawnInterval=100;let pipeSpeed=2;const X2=[[[0,0],[1,0]],[[1,0],[0,0]]],Z2=[[[1,0],[0,0]],[[0,0],[-1,0]]],H2=[[[0.707,0],[0.707,0]],[[0.707,0],[-0.707,0]]],I2=[[[1,0],[0,0]],[[0,0],[1,0]]],CNOT12=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]]],CNOT21=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]]];function t4(a,b){let r=new Array(4).fill(null).map(()=>new Array(4).fill([0,0]));for(let R1=0;R1<2;R1++){for(let C1=0;C1<2;C1++){for(let R2=0;R2<2;R2++){for(let C2=0;C2<2;C2++){let m=cm(a[R1][C1],b[R2][C2]);let rr=2*R1+R2;let cc=2*C1+C2;r[rr][cc]=ca(r[rr][cc],m);}}}}return r}function initGates(){gates.X1=t4(X2,I2);gates.X2=t4(I2,X2);gates.Z1=t4(Z2,I2);gates.Z2=t4(I2,Z2);gates.H1=t4(H2,I2);gates.H2=t4(I2,H2);gates.CNOT12=CNOT12;gates.CNOT21=CNOT21}initGates();function applyGate(g){let mat=gates[g];state=mvm(mat,state);norm();}function measure(){let p=[ ms(state[0]),ms(state[1]),ms(state[2]),ms(state[3]) ];let r=Math.random(),cumulative=0,idx=0;for(let i=0;i<4;i++){cumulative+=p[i];if(r<cumulative){idx=i;break}}let v=[[0,0],[0,0],[0,0],[0,0]];v[idx]=[1,0];state=v}function startGame(){state=[[1,0],[0,0],[0,0],[0,0]];norm();pipes=[];score=0;gameActive=true;spawnTimer=0;pipeSpeed=2;animate()}function animate(){if(!gameActive)return;spawnTimer++;if(spawnTimer>spawnInterval){spawnTimer=0;spawnPipe()}for(let p of pipes){p.x-=pipeSpeed}pipes=pipes.filter(a=>a.x+60>0);for(let p of pipes){if(!p.scored&&p.x+60<getBirdX()-10){p.scored=true;score++;if(score%5==0)pipeSpeed+=0.5}}checkCollision()}draw();requestAnimationFrame(animate)}function spawnPipe(){let th=Math.floor(Math.random()*(c.height-150-40))+20;pipes.push({x:c.width,topH:th,gap:150,scored:false})}function checkCollision(){let bx=getBirdX(),by=getBirdY();for(let p of pipes){if(bx+10>p.x&&bx-10<p.x+60){if(by-10<p.topH||by+10>p.topH+p.gap){endGame();}}}}function endGame(){gameActive=false;ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#fff";ctx.font="30px Arial";ctx.fillText("Game Over",c.width/2-70,c.height/2-20);ctx.fillText("Score: "+score,c.width/2-50,c.height/2+20)}function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="green";for(let p of pipes){ctx.fillRect(p.x,0,60,p.topH);ctx.fillRect(p.x,p.topH+150,60,c.height-(p.topH+150))}ctx.fillStyle="yellow";ctx.beginPath();ctx.arc(getBirdX(),getBirdY(),10,0,2*Math.PI);ctx.fill();ctx.fillStyle="white";ctx.font="20px Arial";ctx.fillText("Score: "+score,10,25)}function getBirdX(){let p=ms(state[2])+ms(state[3]);return p*(c.width-40)+20}function getBirdY(){let p=ms(state[1])+ms(state[3]);return p*(c.height-40)+20}function norm(){let s=0;for(let i=0;i<4;i++)s+=ms(state[i]);s=Math.sqrt(s);if(s<1e-12){state=[[1,0],[0,0],[0,0],[0,0]];return}for(let i=0;i<4;i++){state[i][0]/=s;state[i][1]/=s}}function mvm(m,v){let o=[[0,0],[0,0],[0,0],[0,0]];for(let i=0;i<4;i++){let sum=[0,0];for(let j=0;j<4;j++){sum=ca(sum,cm(m[i][j],v[j]))}o[i]=sum}return o}function cm(a,b){let re=a[0]*b[0]-a[1]*b[1];let im=a[0]*b[1]+a[1]*b[0];return[re,im]}function ca(a,b){return[a[0]+b[0],a[1]+b[1]]}function ms(a){return a[0]*a[0]+a[1]*a[1]}
 </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quantum Gate Bird 2.0</title>
+  <style>
+    body { margin: 0; padding: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+    h1 { margin: 20px 0; }
+    #gameCanvas { display: block; margin: 20px auto; border: 2px solid #444; background: #222; }
+    #controls button { background: #6600cc; color: #fff; border: none; padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; }
+    #controls button:hover { background: #9933ff; }
+  </style>
+</head>
+<body>
+<h1>Quantum Gate Bird 2.0</h1>
+<canvas id="gameCanvas" width="600" height="600"></canvas>
+<div id="controls">
+  <button onclick="applyGate('X1')">X1</button>
+  <button onclick="applyGate('X2')">X2</button>
+  <button onclick="applyGate('Z1')">Z1</button>
+  <button onclick="applyGate('Z2')">Z2</button>
+  <button onclick="applyGate('H1')">H1</button>
+  <button onclick="applyGate('H2')">H2</button>
+  <button onclick="applyGate('CNOT12')">CNOT(1→2)</button>
+  <button onclick="applyGate('CNOT21')">CNOT(2→1)</button>
+  <button onclick="measure()">Measure</button>
+  <button onclick="startGame()">Start/Reset</button>
+</div>
+<script>
+let c=document.getElementById("gameCanvas"),ctx=c.getContext("2d");let state=[ [1,0],[0,0],[0,0],[0,0] ];let gates={};let pipes=[];let score=0;let gameActive=false;let spawnTimer=0;let spawnInterval=100;let pipeSpeed=2;const X2=[[[0,0],[1,0]],[[1,0],[0,0]]],Z2=[[[1,0],[0,0]],[[0,0],[-1,0]]],H2=[[[0.707,0],[0.707,0]],[[0.707,0],[-0.707,0]]],I2=[[[1,0],[0,0]],[[0,0],[1,0]]],CNOT12=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]]],CNOT21=[[[1,0],[0,0],[0,0],[0,0]],[[0,0],[0,0],[0,0],[1,0]],[[0,0],[0,0],[1,0],[0,0]],[[0,0],[1,0],[0,0],[0,0]]];function t4(a,b){let r=new Array(4).fill(null).map(()=>new Array(4).fill([0,0]));for(let R1=0;R1<2;R1++){for(let C1=0;C1<2;C1++){for(let R2=0;R2<2;R2++){for(let C2=0;C2<2;C2++){let m=cm(a[R1][C1],b[R2][C2]);let rr=2*R1+R2;let cc=2*C1+C2;r[rr][cc]=ca(r[rr][cc],m);}}}}return r}function initGates(){gates.X1=t4(X2,I2);gates.X2=t4(I2,X2);gates.Z1=t4(Z2,I2);gates.Z2=t4(I2,Z2);gates.H1=t4(H2,I2);gates.H2=t4(I2,H2);gates.CNOT12=CNOT12;gates.CNOT21=CNOT21}initGates();function applyGate(g){let mat=gates[g];state=mvm(mat,state);norm();}function measure(){let p=[ ms(state[0]),ms(state[1]),ms(state[2]),ms(state[3]) ];let r=Math.random(),cumulative=0,idx=0;for(let i=0;i<4;i++){cumulative+=p[i];if(r<cumulative){idx=i;break}}let v=[[0,0],[0,0],[0,0],[0,0]];v[idx]=[1,0];state=v}function startGame(){state=[[1,0],[0,0],[0,0],[0,0]];norm();pipes=[];score=0;gameActive=true;spawnTimer=0;pipeSpeed=2;animate()}function animate(){if(!gameActive)return;spawnTimer++;if(spawnTimer>spawnInterval){spawnTimer=0;spawnPipe()}for(let p of pipes){p.x-=pipeSpeed}pipes=pipes.filter(a=>a.x+60>0);for(let p of pipes){if(!p.scored&&p.x+60<getBirdX()-10){p.scored=true;score++;if(score%5==0)pipeSpeed+=0.5}}checkCollision()}draw();requestAnimationFrame(animate)}function spawnPipe(){let th=Math.floor(Math.random()*(c.height-150-40))+20;pipes.push({x:c.width,topH:th,gap:150,scored:false})}function checkCollision(){let bx=getBirdX(),by=getBirdY();for(let p of pipes){if(bx+10>p.x&&bx-10<p.x+60){if(by-10<p.topH||by+10>p.topH+p.gap){endGame();}}}}function endGame(){gameActive=false;ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#fff";ctx.font="30px Arial";ctx.fillText("Game Over",c.width/2-70,c.height/2-20);ctx.fillText("Score: "+score,c.width/2-50,c.height/2+20)}function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="green";for(let p of pipes){ctx.fillRect(p.x,0,60,p.topH);ctx.fillRect(p.x,p.topH+150,60,c.height-(p.topH+150))}ctx.fillStyle="yellow";ctx.beginPath();ctx.arc(getBirdX(),getBirdY(),10,0,2*Math.PI);ctx.fill();ctx.fillStyle="white";ctx.font="20px Arial";ctx.fillText("Score: "+score,10,25)}function getBirdX(){let p=ms(state[2])+ms(state[3]);return p*(c.width-40)+20}function getBirdY(){let p=ms(state[1])+ms(state[3]);return p*(c.height-40)+20}function norm(){let s=0;for(let i=0;i<4;i++)s+=ms(state[i]);s=Math.sqrt(s);if(s<1e-12){state=[[1,0],[0,0],[0,0],[0,0]];return}for(let i=0;i<4;i++){state[i][0]/=s;state[i][1]/=s}}function mvm(m,v){let o=[[0,0],[0,0],[0,0],[0,0]];for(let i=0;i<4;i++){let sum=[0,0];for(let j=0;j<4;j++){sum=ca(sum,cm(m[i][j],v[j]))}o[i]=sum}return o}function cm(a,b){let re=a[0]*b[0]-a[1]*b[1];let im=a[0]*b[1]+a[1]*b[0];return[re,im]}function ca(a,b){return[a[0]+b[0],a[1]+b[1]]}function ms(a){return a[0]*a[0]+a[1]*a[1]}
+</script>
+</body>
+</html>
+
