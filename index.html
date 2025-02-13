@@ -2,220 +2,179 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Quantum Gate Bird</title>
+  <title>QuantumMaze</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
-    body { margin: 0; padding: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center; }
-    h1 { margin: 20px 0; }
-    #gameCanvas { display: block; margin: 20px auto; border: 2px solid #444; background: #222; }
-    #controls button { background: #6600cc; color: #fff; border: none; padding: 10px 15px; margin: 5px; font-size: 16px; cursor: pointer; }
-    #controls button:hover { background: #9933ff; }
+    body { margin:0; padding:0; background:#000; color:#fff; font-family:sans-serif; text-align:center; }
+    h1 { margin:10px 0; }
+    #gameContainer { margin:0 auto; max-width:480px; }
+    #gameCanvas { display:block; margin:0 auto; border:2px solid #444; background:#111; width:100%; height:auto; }
+    #controls, #arrowPad { margin:10px auto; display:flex; flex-wrap:wrap; justify-content:center; }
+    .btn { background:#6600cc; color:#fff; border:none; padding:10px 15px; margin:5px; font-size:16px; cursor:pointer; }
+    .btn:hover { background:#9933ff; }
+    #arrowPad { width:200px; }
+    .arrowBtn { width:60px; height:60px; margin:5px; font-size:24px; }
   </style>
 </head>
 <body>
 
-<h1>Quantum Gate Bird 2.0</h1>
-<canvas id="gameCanvas" width="600" height="600"></canvas>
+<h1>Quantum Shift: Entangled Maze (Mobile)</h1>
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="480" height="480"></canvas>
+</div>
+
 <div id="controls">
-  <button onclick="applyGate('X1')">X1</button>
-  <button onclick="applyGate('X2')">X2</button>
-  <button onclick="applyGate('Z1')">Z1</button>
-  <button onclick="applyGate('Z2')">Z2</button>
-  <button onclick="applyGate('H1')">H1</button>
-  <button onclick="applyGate('H2')">H2</button>
-  <button onclick="applyGate('CNOT12')">CNOT(1→2)</button>
-  <button onclick="applyGate('CNOT21')">CNOT(2→1)</button>
-  <button onclick="measure()">Measure</button>
-  <button onclick="startGame()">Start/Reset</button>
+  <button class="btn" onclick="applyGate('X')">X</button>
+  <button class="btn" onclick="applyGate('Z')">Z</button>
+  <button class="btn" onclick="applyGate('H')">H</button>
+  <button class="btn" onclick="applyGate('S')">S</button>
+  <button class="btn" onclick="measure()">Measure</button>
+  <button class="btn" onclick="nextLevel()">Next</button>
+</div>
+
+<div id="arrowPad">
+  <div style="display:flex; justify-content:center;">
+    <button class="btn arrowBtn" onclick="movePlayer(-1,0)">↑</button>
+  </div>
+  <div style="display:flex; justify-content:center;">
+    <button class="btn arrowBtn" onclick="movePlayer(0,-1)">←</button>
+    <button class="btn arrowBtn" onclick="movePlayer(0,1)">→</button>
+  </div>
+  <div style="display:flex; justify-content:center;">
+    <button class="btn arrowBtn" onclick="movePlayer(1,0)">↓</button>
+  </div>
 </div>
 
 <script>
-let cv = document.getElementById("gameCanvas"), cx = cv.getContext("2d");
-let state = [ [1,0],[0,0],[0,0],[0,0] ];
-let pipes = [];
-let score = 0;
-let gameActive = false;
-let spawnTimer = 0;
-let spawnInterval = 100;
-let pipeSpeed = 2;
-let gates = {};
-
-const X_2 = [ [[0,0],[1,0]], [[1,0],[0,0]] ];
-const Z_2 = [ [[1,0],[0,0]], [[0,0],[-1,0]] ];
-const H_2 = [ [[0.707,0],[0.707,0]], [[0.707,0],[-0.707,0]] ];
-const I_2 = [ [[1,0],[0,0]], [[0,0],[1,0]] ];
-const CNOT_12 = [
-  [[1,0],[0,0],[0,0],[0,0]],
-  [[0,0],[1,0],[0,0],[0,0]],
-  [[0,0],[0,0],[0,0],[1,0]],
-  [[0,0],[0,0],[1,0],[0,0]]
+let cv=document.getElementById("gameCanvas"),cx=cv.getContext("2d");
+let tileSize=32,rows=15,cols=15;
+let levels=[
+  [
+    "WWWWWWWWWWWWWWW",
+    "W.P.........D.W",
+    "W.WWWWWW.WWW.W.W",
+    "W.W.....W...W.W",
+    "W.W.WWW.W.WWW.W",
+    "W.W.W...W.W...W",
+    "W.W.W.WWW.W.W.W",
+    "W.W.W.....W.W.W",
+    "W.W.WWWWWWW.W.W",
+    "W.W.......W.W.W",
+    "W.W.WWWWW.W.W.W",
+    "W.W.W...W.W.W.W",
+    "W.W.W.WWW.W.W.W",
+    "W.......G.....W",
+    "WWWWWWWWWWWWWWW"
+  ],
+  [
+    "WWWWWWWWWWWWWWW",
+    "W.P.....W..D..W",
+    "W.WWWW..W.WWW.W",
+    "W.W...W.W...W.W",
+    "W.W.WWW.W.WWW.W",
+    "W.W.W...W.W...W",
+    "W.W.W.WWW.W.W.W",
+    "W.W.W.....W.W.W",
+    "W.W.WWWWWWW.W.W",
+    "W.W.......W.W.W",
+    "W.W.WWWWW.W.W.W",
+    "W.W.W...W.W.W.W",
+    "W.W.W.WWW.W.W.W",
+    "W.......G.....W",
+    "WWWWWWWWWWWWWWW"
+  ]
 ];
-const CNOT_21 = [
-  [[1,0],[0,0],[0,0],[0,0]],
-  [[0,0],[0,0],[0,0],[1,0]],
-  [[0,0],[0,0],[1,0],[0,0]],
-  [[0,0],[1,0],[0,0],[0,0]]
-];
+let levelIndex=0,map=[],player={r:0,c:0},doors=[],doorStates=[];
+let gateX=[[[0,0],[1,0]],[[1,0],[0,0]]],gateZ=[[[1,0],[0,0]],[[0,0],[-1,0]]];
+let gateH=[[[0.707,0],[0.707,0]],[[0.707,0],[-0.707,0]]];
+let gateS=[[[1,0],[0,0]],[[0,0],[0,1]]];
 
-function initGates() {
-  gates.X1 = tensor4(X_2, I_2);
-  gates.X2 = tensor4(I_2, X_2);
-  gates.Z1 = tensor4(Z_2, I_2);
-  gates.Z2 = tensor4(I_2, Z_2);
-  gates.H1 = tensor4(H_2, I_2);
-  gates.H2 = tensor4(I_2, H_2);
-  gates.CNOT12 = CNOT_12;
-  gates.CNOT21 = CNOT_21;
+function startGame(){
+  levelIndex=0; loadLevel(levelIndex); drawLevel();
 }
-initGates();
-
-function startGame() {
-  state = [ [1,0],[0,0],[0,0],[0,0] ];
-  normalizeState();
-  pipes = [];
-  score = 0;
-  gameActive = true;
-  spawnTimer = 0;
-  pipeSpeed = 2;
-  animate();
-}
-
-function animate() {
-  if (!gameActive) return;
-  spawnTimer++;
-  if (spawnTimer > spawnInterval) {
-    spawnTimer = 0;
-    spawnPipe();
-  }
-  for (let p of pipes) p.x -= pipeSpeed;
-  pipes = pipes.filter(p => p.x + 60 > 0);
-  for (let p of pipes) {
-    if (!p.scored && p.x + 60 < getBirdX() - 10) {
-      p.scored = true;
-      score++;
-      if (score % 5 === 0) pipeSpeed += 0.5;
+function loadLevel(idx){
+  map=[]; doors=[]; doorStates=[];
+  let lev=levels[idx];
+  for(let r=0;r<rows;r++){
+    let row=lev[r].split("");
+    map.push(row);
+    for(let c=0;c<cols;c++){
+      if(row[c]==="P"){player.r=r;player.c=c;}
+      if(row[c]==="D"){doors.push({r,c});doorStates.push([[1,0],[0,0]]);}
     }
   }
-  checkCollision();
-  draw();
-  requestAnimationFrame(animate);
 }
-
-function spawnPipe() {
-  let th = Math.floor(Math.random() * (cv.height - 150 - 40)) + 20;
-  pipes.push({ x: cv.width, topH: th, gap: 150, scored: false });
-}
-
-function checkCollision() {
-  let bx = getBirdX(), by = getBirdY();
-  for (let p of pipes) {
-    if (bx + 10 > p.x && bx - 10 < p.x + 60) {
-      if (by - 10 < p.topH || by + 10 > p.topH + p.gap) {
-        endGame();
+function drawLevel(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      let x=c*tileSize,y=r*tileSize,ch=map[r][c];
+      if(ch==="W"){cx.fillStyle="#333";cx.fillRect(x,y,tileSize,tileSize);}
+      else if(ch==="G"){cx.fillStyle="#0f0";cx.fillRect(x,y,tileSize,tileSize);}
+      else if(ch==="D"){
+        let i=findDoorIndex(r,c),p=magSq(doorStates[i][1]);
+        cx.fillStyle=`rgba(0,255,0,${0.3+p*0.7})`;
+        cx.fillRect(x,y,tileSize,tileSize);
       }
+      else if(r===player.r&&c===player.c){cx.fillStyle="yellow";cx.fillRect(x,y,tileSize,tileSize);}
+      else{cx.fillStyle="#111";cx.fillRect(x,y,tileSize,tileSize);}
     }
   }
 }
-
-function endGame() {
-  gameActive = false;
-  cx.fillStyle = "rgba(0,0,0,0.5)";
-  cx.fillRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = "#fff";
-  cx.font = "30px Arial";
-  cx.fillText("Game Over", cv.width/2 - 70, cv.height/2 - 20);
-  cx.fillText("Score: " + score, cv.width/2 - 50, cv.height/2 + 20);
-}
-
-function draw() {
-  cx.clearRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = "green";
-  for (let p of pipes) {
-    cx.fillRect(p.x, 0, 60, p.topH);
-    cx.fillRect(p.x, p.topH + 150, 60, cv.height - (p.topH + 150));
+function findDoorIndex(rr,cc){
+  for(let i=0;i<doors.length;i++){
+    if(doors[i].r===rr&&doors[i].c===cc)return i;
   }
-  cx.fillStyle = "yellow";
-  cx.beginPath();
-  cx.arc(getBirdX(), getBirdY(), 10, 0, 2 * Math.PI);
-  cx.fill();
-  cx.fillStyle = "white";
-  cx.font = "20px Arial";
-  cx.fillText("Score: " + score, 10, 25);
+  return -1;
 }
-
-function getBirdX() {
-  let p = magSq(state[2]) + magSq(state[3]);
-  return p * (cv.width - 40) + 20;
+function nextLevel(){
+  levelIndex=(levelIndex+1)%levels.length;loadLevel(levelIndex);drawLevel();
 }
-
-function getBirdY() {
-  let p = magSq(state[1]) + magSq(state[3]);
-  return p * (cv.height - 40) + 20;
-}
-
-function applyGate(name) {
-  let mat = gates[name];
-  state = matVecMultiply(mat, state);
-  normalizeState();
-}
-
-function measure() {
-  let probs = state.map(a => magSq(a));
-  let r = Math.random(), c = 0, idx = 0;
-  for (let i = 0; i < 4; i++) {
-    c += probs[i];
-    if (r < c) { idx = i; break; }
+function applyGate(g){
+  let mat=(g==="X")?gateX:(g==="Z")?gateZ:(g==="H")?gateH:gateS;
+  for(let i=0;i<doorStates.length;i++){
+    let ds=doorStates[i],[na,nb]=matMul2x2(mat,ds[0],ds[1]);
+    doorStates[i]=[na,nb];norm(doorStates[i]);
   }
-  let collapsed = [ [0,0],[0,0],[0,0],[0,0] ];
-  collapsed[idx] = [1,0];
-  state = collapsed;
+  updateDoors();drawLevel();
 }
-
-function tensor4(A, B) {
-  let res = new Array(4).fill(null).map(() => new Array(4).fill([0,0]));
-  for (let rA=0; rA<2; rA++){
-    for (let cA=0; cA<2; cA++){
-      for (let rB=0; rB<2; rB++){
-        for (let cB=0; cB<2; cB++){
-          let prod = cm(A[rA][cA], B[rB][cB]);
-          res[2*rA+rB][2*cA+cB] = ca(res[2*rA+rB][2*cA+cB], prod);
-        }
-      }
-    }
+function measure(){
+  for(let i=0;i<doorStates.length;i++){
+    let ds=doorStates[i],p0=magSq(ds[0]),p1=magSq(ds[1]),r=Math.random();
+    let out=(r<p0)?0:1,st=[[0,0],[0,0]];
+    st[out]=[1,0];doorStates[i]=st;
   }
-  return res;
+  updateDoors();drawLevel();
 }
-
-function matVecMultiply(mat, vec) {
-  let out = [ [0,0],[0,0],[0,0],[0,0] ];
-  for (let i=0; i<4; i++){
-    let sum = [0,0];
-    for (let j=0; j<4; j++){
-      sum = ca(sum, cm(mat[i][j], vec[j]));
-    }
-    out[i] = sum;
+function updateDoors(){
+  for(let i=0;i<doors.length;i++){
+    let p1=magSq(doorStates[i][1]),d=doors[i];
+    if(p1>0.5)map[d.r][d.c]=".";else map[d.r][d.c]="D";
   }
-  return out;
 }
-
-function normalizeState() {
-  let s=0;
-  for (let i=0;i<4;i++) s += magSq(state[i]);
-  s = Math.sqrt(s);
-  if (s<1e-12) { state=[ [1,0],[0,0],[0,0],[0,0] ]; return; }
-  for (let i=0;i<4;i++){ state[i][0]/=s; state[i][1]/=s; }
+function movePlayer(dr,dc){
+  let nr=player.r+dr,nc=player.c+dc;
+  if(nr<0||nr>=rows||nc<0||nc>=cols)return;
+  let ch=map[nr][nc];
+  if(ch==="W"||ch==="D")return;
+  player.r=nr;player.c=nc;
+  if(ch==="G"){alert("Level Complete!");nextLevel();}
+  drawLevel();
 }
-
-function cm(a, b) {
-  return [a[0]*b[0] - a[1]*b[1], a[0]*b[1] + a[1]*b[0]];
+function matMul2x2(m,a,b){
+  let na=complexAdd(complexMul(m[0][0],a),complexMul(m[0][1],b));
+  let nb=complexAdd(complexMul(m[1][0],a),complexMul(m[1][1],b));
+  return [na,nb];
 }
-
-function ca(a, b) {
-  return [a[0]+b[0], a[1]+b[1]];
+function norm(st){
+  let s=Math.sqrt(magSq(st[0])+magSq(st[1]));
+  if(s<1e-9){st[0]=[1,0];st[1]=[0,0];return;}
+  st[0][0]/=s;st[0][1]/=s;st[1][0]/=s;st[1][1]/=s;
 }
-
-function magSq(a) {
-  return a[0]*a[0] + a[1]*a[1];
-}
+function complexMul(a,b){return[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];}
+function complexAdd(a,b){return[a[0]+b[0],a[1]+b[1]];}
+function magSq(a){return a[0]*a[0]+a[1]*a[1];}
+startGame();
 </script>
 </body>
 </html>
