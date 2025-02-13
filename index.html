@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Quantum Flappy Bird (Mobile-Friendly)</title>
+  <title>Quantum Flappy Bird: Infinity</title>
   <style>
     body {
       margin: 0;
@@ -17,23 +17,23 @@
     }
     #gameContainer {
       margin: 0 auto;
-      width: 400px; /* fixed width for simplicity; can be made responsive */
+      width: 400px; /* fixed for simplicity; can be made responsive */
       position: relative;
     }
     #gameCanvas {
-      background-color: #222;
       display: block;
       margin: 0 auto;
       border: 2px solid #555;
+      background-color: #222; /* fallback */
     }
-    #info {
-      margin-top: 10px;
+    #controls {
+      margin: 10px auto;
     }
     button {
       background-color: #6600cc;
       color: #fff;
       border: none;
-      padding: 10px 20px;
+      padding: 10px 15px;
       font-size: 16px;
       margin: 5px;
       cursor: pointer;
@@ -41,248 +41,288 @@
     button:hover {
       background-color: #9933ff;
     }
+    #scoreDisplay {
+      margin: 10px 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Quantum Flappy Bird (Mobile-Friendly)</h1>
-  <div id="gameContainer">
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
-  </div>
+<h1>Quantum Flappy Bird: Infinity</h1>
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+</div>
 
-  <div id="info">
-    <p>
-      Tap <strong>the screen</strong> (or press <strong>Space</strong> on desktop) to flap.<br>
-      Tap <strong>“Quantum Tunnel”</strong> if you think you're about to collide.<br>
-      Survive as long as possible and rack up points!
-    </p>
-    <button id="startBtn">Start Game</button>
-    <button id="tunnelBtn">Quantum Tunnel</button>
-    <p id="scoreDisplay">Score: 0</p>
-  </div>
+<div id="controls">
+  <button id="startBtn">Start Game</button>
+  <button id="flapBtn">Flap</button>
+  <button id="quantumBtn">Quantum Power</button>
+  <p id="scoreDisplay">Score: 0</p>
+</div>
 
-  <script>
-    /***************************************************************
-     * Quantum Flappy Bird (Mobile-Friendly)
-     * 
-     * 1) Bird is a circle on a canvas.
-     * 2) Pipes move leftward; avoid collisions by tapping to flap.
-     * 3) "Quantum Tunnel" button: If collision would occur this frame,
-     *    there's a 50% chance to ignore that collision.
-     * 4) Score increments when passing pipes.
-     ***************************************************************/
+<script>
+/****************************************************************
+ * Quantum Flappy Bird: Infinity
+ * 
+ * DYNAMIC FEATURES:
+ * 1) Day-Night Cycle: background color continuously changes.
+ * 2) Random Pipe Colors: each pipe has a random hue.
+ * 3) Difficulty Scaling: pipe speed & spawn rate increase 
+ *    as score rises.
+ * 4) Quantum Tunnel Mechanic: press "Quantum Power" to attempt
+ *    a 50% chance to ignore collision that frame.
+ * 5) Mobile-Friendly: tap the canvas or "Flap" button to jump.
+ ****************************************************************/
 
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const startBtn = document.getElementById("startBtn");
-    const tunnelBtn = document.getElementById("tunnelBtn");
-    const scoreDisplay = document.getElementById("scoreDisplay");
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const startBtn = document.getElementById("startBtn");
+const flapBtn = document.getElementById("flapBtn");
+const quantumBtn = document.getElementById("quantumBtn");
+const scoreDisplay = document.getElementById("scoreDisplay");
 
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
 
-    // Bird properties
-    let birdX = 80;
-    let birdY = HEIGHT / 2;
-    let birdRadius = 15;
-    let birdVelocity = 0;
-    const GRAVITY = 0.35;
-    const FLAP_STRENGTH = -6;
-    const QUANTUM_TUNNEL_PROB = 0.5; // 50% chance to tunnel
+// Bird properties
+let birdX = 80;
+let birdY = HEIGHT / 2;
+let birdRadius = 15;
+let birdVelocity = 0;
+const GRAVITY = 0.35;
+const FLAP_STRENGTH = -6;
 
-    // Pipe properties
-    let pipes = [];
-    const PIPE_WIDTH = 60;
-    const PIPE_GAP = 150;
-    const PIPE_SPEED = 2.5;
-    let pipeSpawnTimer = 0;
-    const PIPE_SPAWN_INTERVAL = 100;
+// Quantum mechanic
+const QUANTUM_TUNNEL_PROB = 0.5; // 50% chance to ignore collision
+let quantumAttempt = false;       // set true if player tries to tunnel this frame
 
-    // Game state
-    let gameActive = false;
-    let score = 0;
-    let quantumTunnelAttempt = false; // tracks if player tried to tunnel this frame
+// Pipes
+let pipes = [];
+const BASE_PIPE_WIDTH = 60;
+const BASE_PIPE_GAP = 150;
+const BASE_PIPE_SPEED = 2.5;
+let pipeSpawnTimer = 0;
+const BASE_PIPE_SPAWN_INTERVAL = 100;
 
-    // Event listeners
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        flap();
+// Dynamic difficulty
+function getPipeSpeed(score) {
+  // Increase speed with score
+  return BASE_PIPE_SPEED + Math.floor(score / 5) * 0.5;
+}
+function getPipeSpawnInterval(score) {
+  // Decrease interval (spawn pipes more often) as score grows
+  return Math.max(50, BASE_PIPE_SPAWN_INTERVAL - score * 2);
+}
+
+// Game state
+let gameActive = false;
+let score = 0;
+
+// For day-night cycle
+let frameCount = 0; // increments each animation frame
+
+// EVENT LISTENERS
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    flap();
+  }
+});
+canvas.addEventListener("click", flap);
+canvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  flap();
+}, {passive: false});
+
+startBtn.addEventListener("click", startGame);
+flapBtn.addEventListener("click", flap);
+quantumBtn.addEventListener("click", () => {
+  quantumAttempt = true;
+});
+
+// START GAME
+function startGame() {
+  resetGame();
+  gameActive = true;
+  animate();
+}
+
+// RESET
+function resetGame() {
+  birdX = 80;
+  birdY = HEIGHT / 2;
+  birdVelocity = 0;
+  score = 0;
+  pipes = [];
+  pipeSpawnTimer = 0;
+  frameCount = 0;
+  quantumAttempt = false;
+  scoreDisplay.innerText = "Score: 0";
+}
+
+// MAIN LOOP
+function animate() {
+  if (!gameActive) return;
+
+  frameCount++;
+  updateBird();
+  updatePipes();
+  checkCollisions();
+
+  drawScene(); // includes background, pipes, bird, score
+
+  // Reset quantum attempt each frame
+  quantumAttempt = false;
+
+  requestAnimationFrame(animate);
+}
+
+// UPDATE BIRD
+function updateBird() {
+  birdVelocity += GRAVITY;
+  birdY += birdVelocity;
+
+  // top clamp
+  if (birdY < birdRadius) {
+    birdY = birdRadius;
+    birdVelocity = 0;
+  }
+  // bottom clamp
+  if (birdY > HEIGHT - birdRadius) {
+    birdY = HEIGHT - birdRadius;
+    birdVelocity = 0;
+  }
+}
+
+// UPDATE PIPES
+function updatePipes() {
+  pipeSpawnTimer++;
+  let currentSpeed = getPipeSpeed(score);
+  let currentSpawnInterval = getPipeSpawnInterval(score);
+
+  if (pipeSpawnTimer > currentSpawnInterval) {
+    pipeSpawnTimer = 0;
+    spawnPipe();
+  }
+
+  // Move pipes left
+  for (let p of pipes) {
+    p.x -= currentSpeed;
+  }
+  // Remove off-screen pipes
+  pipes = pipes.filter(p => p.x + p.width > 0);
+
+  // Score increment
+  for (let p of pipes) {
+    if (!p.passed && p.x + p.width < birdX) {
+      p.passed = true;
+      score++;
+      scoreDisplay.innerText = "Score: " + score;
+    }
+  }
+}
+
+function spawnPipe() {
+  let topHeight = Math.floor(Math.random() * (HEIGHT - BASE_PIPE_GAP - 50)) + 20;
+  let gap = BASE_PIPE_GAP;
+  let bottomY = topHeight + gap;
+  let bottomHeight = HEIGHT - bottomY;
+
+  // random color
+  let hue = Math.floor(Math.random() * 360);
+
+  pipes.push({
+    x: WIDTH,
+    width: BASE_PIPE_WIDTH,
+    topY: 0,
+    topHeight: topHeight,
+    bottomY: bottomY,
+    bottomHeight: bottomHeight,
+    passed: false,
+    hue: hue
+  });
+}
+
+// COLLISIONS
+function checkCollisions() {
+  for (let p of pipes) {
+    // horizontal overlap
+    if (birdX + birdRadius > p.x && birdX - birdRadius < p.x + p.width) {
+      // top pipe collision
+      if (birdY - birdRadius < p.topHeight) {
+        handleCollision();
       }
-    });
-    // Canvas click/touch to flap
-    canvas.addEventListener("click", flap);
-    canvas.addEventListener("touchstart", (e) => {
-      e.preventDefault(); // prevents scrolling on mobile
-      flap();
-    }, {passive: false});
-
-    startBtn.addEventListener("click", startGame);
-    tunnelBtn.addEventListener("click", attemptQuantumTunnel);
-
-    // Functions
-    function flap() {
-      if (!gameActive) return;
-      birdVelocity = FLAP_STRENGTH;
-    }
-
-    function attemptQuantumTunnel() {
-      // If a collision happens this frame, we have a 50% chance to survive
-      quantumTunnelAttempt = true;
-    }
-
-    function startGame() {
-      resetGame();
-      gameActive = true;
-      animate();
-    }
-
-    function resetGame() {
-      birdX = 80;
-      birdY = HEIGHT / 2;
-      birdVelocity = 0;
-      score = 0;
-      scoreDisplay.innerText = "Score: 0";
-      pipes = [];
-      pipeSpawnTimer = 0;
-      quantumTunnelAttempt = false;
-    }
-
-    function animate() {
-      if (!gameActive) return;
-
-      // Update
-      updateBird();
-      updatePipes();
-      checkCollisions();
-
-      // Draw
-      ctx.clearRect(0, 0, WIDTH, HEIGHT);
-      drawBird();
-      drawPipes();
-      drawScore();
-
-      // Reset the quantum tunnel attempt each frame
-      quantumTunnelAttempt = false;
-
-      requestAnimationFrame(animate);
-    }
-
-    function updateBird() {
-      birdVelocity += GRAVITY;
-      birdY += birdVelocity;
-
-      // prevent bird from going above top
-      if (birdY < birdRadius) {
-        birdY = birdRadius;
-        birdVelocity = 0;
-      }
-      // prevent bird from going below bottom
-      if (birdY > HEIGHT - birdRadius) {
-        birdY = HEIGHT - birdRadius;
-        birdVelocity = 0;
-      }
-    }
-
-    function updatePipes() {
-      pipeSpawnTimer++;
-      if (pipeSpawnTimer > PIPE_SPAWN_INTERVAL) {
-        pipeSpawnTimer = 0;
-        spawnPipe();
-      }
-      // move pipes left
-      for (let p of pipes) {
-        p.x -= PIPE_SPEED;
-      }
-      // remove off-screen pipes
-      pipes = pipes.filter(p => p.x + PIPE_WIDTH > 0);
-      // increment score if bird passes a pipe
-      for (let p of pipes) {
-        if (!p.passed && p.x + PIPE_WIDTH < birdX) {
-          p.passed = true;
-          score++;
-          scoreDisplay.innerText = "Score: " + score;
-        }
-      }
-    }
-
-    function spawnPipe() {
-      // random top pipe height
-      let topHeight = Math.floor(Math.random() * (HEIGHT - PIPE_GAP - 50)) + 20;
-      let bottomY = topHeight + PIPE_GAP;
-      let bottomHeight = HEIGHT - bottomY;
-
-      pipes.push({
-        x: WIDTH,
-        topY: 0,
-        topHeight: topHeight,
-        bottomY: bottomY,
-        bottomHeight: bottomHeight,
-        passed: false
-      });
-    }
-
-    function checkCollisions() {
-      for (let p of pipes) {
-        // horizontal overlap
-        if (birdX + birdRadius > p.x && birdX - birdRadius < p.x + PIPE_WIDTH) {
-          // top pipe collision
-          if (birdY - birdRadius < p.topHeight) {
-            handleCollision();
-          }
-          // bottom pipe collision
-          if (birdY + birdRadius > p.bottomY) {
-            handleCollision();
-          }
-        }
-      }
-    }
-
-    function handleCollision() {
-      if (quantumTunnelAttempt) {
-        // Attempt quantum tunnel
-        let r = Math.random();
-        if (r > QUANTUM_TUNNEL_PROB) {
-          endGame();
-        }
-      } else {
-        endGame();
-      }
-    }
-
-    function endGame() {
-      gameActive = false;
-      // Overlay
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-      ctx.fillStyle = "#fff";
-      ctx.font = "30px Arial";
-      ctx.fillText("Game Over", WIDTH/2 - 70, HEIGHT/2 - 20);
-      ctx.fillText("Score: " + score, WIDTH/2 - 50, HEIGHT/2 + 20);
-    }
-
-    function drawBird() {
-      ctx.fillStyle = "yellow";
-      ctx.beginPath();
-      ctx.arc(birdX, birdY, birdRadius, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-
-    function drawPipes() {
-      ctx.fillStyle = "green";
-      for (let p of pipes) {
-        // top pipe
-        ctx.fillRect(p.x, p.topY, PIPE_WIDTH, p.topHeight);
-        // bottom pipe
-        ctx.fillRect(p.x, p.bottomY, PIPE_WIDTH, p.bottomHeight);
+      // bottom pipe collision
+      if (birdY + birdRadius > p.bottomY) {
+        handleCollision();
       }
     }
+  }
+}
 
-    function drawScore() {
-      ctx.fillStyle = "white";
-      ctx.font = "20px Arial";
-      ctx.fillText("Score: " + score, 10, 30);
+function handleCollision() {
+  if (quantumAttempt) {
+    // 50% chance to ignore collision
+    let r = Math.random();
+    if (r > QUANTUM_TUNNEL_PROB) {
+      endGame();
     }
-  </script>
+  } else {
+    endGame();
+  }
+}
+
+function endGame() {
+  gameActive = false;
+  // Draw game over overlay
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "30px Arial";
+  ctx.fillText("Game Over", WIDTH/2 - 70, HEIGHT/2 - 20);
+  ctx.fillText("Score: " + score, WIDTH/2 - 50, HEIGHT/2 + 20);
+}
+
+// DRAW
+function drawScene() {
+  // Day-night cycle: background changes with frameCount
+  // We'll do a hue that oscillates with time, or just shift a gradient
+  let cycleHue = (frameCount / 2) % 360; 
+  // create a gradient from top to bottom
+  let gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  gradient.addColorStop(0, `hsl(${cycleHue}, 50%, 30%)`);
+  gradient.addColorStop(1, `hsl(${(cycleHue + 180) % 360}, 50%, 10%)`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // draw pipes
+  for (let p of pipes) {
+    // top pipe
+    ctx.fillStyle = `hsl(${p.hue}, 70%, 40%)`;
+    ctx.fillRect(p.x, p.topY, p.width, p.topHeight);
+    // bottom pipe
+    ctx.fillRect(p.x, p.bottomY, p.width, p.bottomHeight);
+  }
+
+  // draw bird
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(birdX, birdY, birdRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // draw on-canvas score
+  ctx.fillStyle = "white";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+}
+
+// FLAP
+function flap() {
+  if (!gameActive) return;
+  birdVelocity = FLAP_STRENGTH;
+}
+</script>
 </body>
 </html>
